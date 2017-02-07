@@ -50,7 +50,7 @@ module M93A # Hope more extensions will soon follow ;)
 
 		m93a_coord_tools = SketchupExtension.new(
       "Coordinate Tools",
-      "m93a_coord_tools/extension_template_menus.rb")
+      "m93a_coord_tools/user_interface.rb")
 
 
 		m93a_coord_tools.name = "Coordinate Tools"
@@ -66,6 +66,6 @@ module M93A # Hope more extensions will soon follow ;)
 		Sketchup.register_extension( m93a_coord_tools, true )
 
 
-	end # M93A_Coord_Tools
+	end # Coord_Tools
 
 end # M93A

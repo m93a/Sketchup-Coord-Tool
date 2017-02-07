@@ -9,7 +9,7 @@ See loader file for detailed information
 =end
 
 require 'sketchup.rb'
-require 'm93a_coord_tools/extension_template_data.rb'
+require 'm93a_coord_tools/functions.rb'
 
 
 module M93A
@@ -51,7 +51,9 @@ module M93A
       tb.add_item(command2)
 
 
-      command3 = UI::Command.new("Messagebox 2") { msgbox("Messagebox 2") }
+      command3 = UI::Command.new("To Cylindrical Coordinates") {
+				self.activate_cylindrical_tool
+			}
       command3.small_icon = "Images/icon3_16.png"
       command3.large_icon = "Images/icon3_24.png"
       command3.tooltip = "Message Box 2"
