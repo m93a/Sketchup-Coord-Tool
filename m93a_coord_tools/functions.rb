@@ -46,8 +46,8 @@ module M93A
 
 			vertices.uniq!
 
-			t2 = model.axes.transformation
-			t1 = t2.inverse
+			t1 = model.axes.transformation
+			t2 = t1.inverse
 
 			vertices.each { |v|
 
