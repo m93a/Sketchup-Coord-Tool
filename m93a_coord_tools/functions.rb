@@ -26,19 +26,24 @@ module M93A
 			UI.messagebox( msg )
 		end
 
-		def self.to_cylindrical(center,raxis,zaxis,scale=1)
-			taxis = zaxis.cross(raxis)
+		def self.to_cylindrical(entities,center,raxis,zaxis,scale=1)
 			model = Sketchup.active_model
+
+			model.start_operation('Coordinate conversion', true)
+			taxis = zaxis.cross(raxis)
 			original_axes = [model.axes.origin, *model.axes.axes]
 			model.axes.set(center,raxis,taxis,zaxis)
 
 			vertices = []
-			entities = model.active_entities
+			vectors = []
 
 			entities.each{ |e|
-				puts e
 				if e.is_a? Sketchup::Edge
-					vertices.push *e.vertices
+					if e.curve
+						vertices.push *e.explode_curve.vertices
+					else
+					  vertices.push *e.vertices
+					end
 				elsif e.is_a? Sketchup::ConstructionPoint
 					vertices.push e
 				end
@@ -46,26 +51,32 @@ module M93A
 
 			vertices.uniq!
 
-			t1 = model.axes.transformation
-			t2 = t1.inverse
+			t2 = model.axes.transformation
+			t1 = t2.inverse
 
 			vertices.each { |v|
-
 				pos = v.position.clone
 				pos.transform!(t1)
-				pos.set! pos.distance([0,0,0]),
-								 Math.tan(pos.y/pos.x),
-								 pos.z
+
+				r = Math.sqrt(pos.x**2+pos.y**2)
+				t = Math.atan2(pos.y,pos.x) * scale
+				t += Math::PI if t<0
+				z = pos.z
+
+				pos.set! r,t,z
 			 pos.transform!(t2)
 
-			 # there's no such thing as
-			 # v.position = pos
-			 # equivalent:
-			 entities.transform_by_vectors(
-			 	[v], [v.position.vector_to(pos)]
-			 )
-
+			 # make list of transformations
+			 # so that they can interpolate
+			 vectors.push v.position.vector_to(pos)
 			}
+
+			entities.transform_by_vectors(vertices, vectors)
+
+			model.axes.set *original_axes
+			model.commit_operation
+
+			[vertices, vectors]
 		end
 
 		def self.activate_cylindrical_tool

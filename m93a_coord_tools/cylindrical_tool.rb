@@ -8,6 +8,8 @@ See loader file for detailed information
 
 =end
 
+require "m93a_coord_tools/animation.rb"
+
 module M93A
 
   module Coord_Tools
@@ -37,12 +39,14 @@ module M93A
         elsif ! @zero.valid?
           Sketchup.status_text = "Select the r axis. This will be the theta=0 line."
         else
-          Sketchup.status_text = "Select the reference point (in the ground plane)."
+          Sketchup.status_text = "Select the reference point."
         end
       end
 
       def draw(v)
-        @last.draw(v) if @last.display?
+        @center.draw(v) if @center.valid?
+        @zero  .draw(v) if @zero  .valid?
+        @last  .draw(v) if @last  .valid?
       end
 
       def onSetCursor
@@ -74,6 +78,7 @@ module M93A
 
         v.tooltip = @last.tooltip if @last.valid?
         v.invalidate
+        update_ui
       end
 
       def onLButtonDown(flags, x, y, v)
@@ -89,16 +94,26 @@ module M93A
 
           raxis = c.vector_to(r).normalize!
           s_vec = c.vector_to(s)
-          zaxis = raxis.cross(s_vec).normalize!
+          zaxis = raxis.cross(s_vec)
+
+          if zaxis.length != 0
+            zaxis.normalize!
+          else
+            zaxis=Geom::Vector3d.new 0,0,1
+          end
+
           a_len = r.vector_to(s).length
           scale = a_len / raxis.angle_between(s_vec)
 
-          model.start_operation('Coordinate conversion', true)
-          Coord_Tools.to_cylindrical(c,raxis,zaxis,scale)
-          model.commit_operation
+          ents = model.active_entities
+
+          anim = Coord_Tools.to_cylindrical(ents,c,raxis,zaxis,scale)
+          # v.animation = Vertex_Animation.new(1000,*anim)
 
           reset_tool
         end
+
+        update_ui
       end
 
     end # Cylindrical_Tool
