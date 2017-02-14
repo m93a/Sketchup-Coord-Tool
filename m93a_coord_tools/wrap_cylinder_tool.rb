@@ -8,45 +8,43 @@ See loader file for detailed information
 
 =end
 
-require "m93a_coord_tools/animation.rb"
-
 module M93A
 
   module Coord_Tools
 
-    class Cylindrical_Tool
+    class Wrap_Cylinder_Tool
 
 
       def activate
-        @center = Sketchup::InputPoint.new
-        @zero  = Sketchup::InputPoint.new
+        @minus = Sketchup::InputPoint.new
+        @plus  = Sketchup::InputPoint.new
         @last  = Sketchup::InputPoint.new
 
         update_ui
       end
 
       def reset_tool
-        @center.clear
-        @zero.clear
+        @minus.clear
+        @plus.clear
         @last.clear
 
         update_ui
       end
 
       def update_ui
-        if ! @center.valid?
-          Sketchup.status_text = "Select the pole (the center of your cone)"
-        elsif ! @zero.valid?
-          Sketchup.status_text = "Select the r axis. This will be the theta=0 line."
+        if ! @minus.valid?
+          Sketchup.status_text = "Select the minimum on the pole-line, where theta=−π. Usually the left one."
+        elsif ! @plus.valid?
+          Sketchup.status_text = "Select the maximum on the pole-line, where theta=π. Try that one on the right."
         else
-          Sketchup.status_text = "Select the reference point."
+          Sketchup.status_text = "Select a reference point on the model."
         end
       end
 
       def draw(v)
-        @center.draw(v) if @center.valid?
-        @zero  .draw(v) if @zero  .valid?
-        @last  .draw(v) if @last  .valid?
+        @minus.draw(v) if @minus.valid?
+        @plus .draw(v) if @plus .valid?
+        @last .draw(v) if @last .valid?
       end
 
       def onSetCursor
@@ -70,10 +68,10 @@ module M93A
       end
 
       def onMouseMove(flags, x, y, v)
-        if ! @center.valid?
+        if (! @minus.valid? or @plus.valid?)
           @last.pick(v,x,y)
         else
-          @last.pick(v,x,y,@center)
+          @last.pick(v,x,y,@minus)
         end
 
         v.tooltip = @last.tooltip if @last.valid?
@@ -82,19 +80,24 @@ module M93A
       end
 
       def onLButtonDown(flags, x, y, v)
-        if ! @center.valid?
-          @center.copy! @last
-        elsif ! @zero.valid?
-          @zero.copy! @last
+        if ! @minus.valid?
+          @minus.copy! @last
+        elsif ! @plus.valid?
+          @plus.copy! @last
         else
           model = Sketchup.active_model
-          c = @center.position
-          r = @zero.position
-          s = @last.position
+          a = @minus.position
+          b = @plus.position
+          r = @last.position
 
-          raxis = c.vector_to(r).normalize!
-          s_vec = c.vector_to(s)
-          zaxis = raxis.cross(s_vec)
+          theta = a.vector_to(b)
+          scale = theta.length
+          theta.normalize!
+          center = a.offset(theta, scale/2)
+
+          scale /= 2*Math::PI
+          ref = a.vector_to(r)
+          zaxis = theta.cross(ref)
 
           if zaxis.length != 0
             zaxis.normalize!
@@ -102,12 +105,9 @@ module M93A
             zaxis=Geom::Vector3d.new 0,0,1
           end
 
-          a_len = r.vector_to(s).length
-          scale = a_len / raxis.angle_between(s_vec)
-
           ents = model.active_entities
 
-          anim = Coord_Tools.to_cylindrical(ents,c,raxis,zaxis,scale)
+          anim = Coord_Tools.from_cylindrical(ents,center,theta,zaxis,scale)
           # v.animation = Vertex_Animation.new(1000,*anim)
 
           reset_tool

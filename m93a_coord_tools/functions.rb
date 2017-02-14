@@ -8,32 +8,29 @@ See loader file for detailed information
 
 =end
 
-require "m93a_coord_tools/cylindrical_tool.rb"
+require "m93a_coord_tools/unwrap_cylinder_tool.rb"
+require "m93a_coord_tools/wrap_cylinder_tool.rb"
 
 
 module M93A
 
 	module Coord_Tools
 
-		def self.su_select_all
-			model = Sketchup.active_model
-			sel = model.selection
-			ents = model.active_entities
-			sel.add( ents.to_a )
+		def self.activate_tool_unwrap
+			Sketchup.active_model.select_tool(Unwrap_Cylinder_Tool.new)
 		end
 
-		def self.msgbox(msg)
-			UI.messagebox( msg )
+		def self.activate_tool_wrap
+			Sketchup.active_model.select_tool(Wrap_Cylinder_Tool.new)
 		end
 
 		# convert Cartesian coords to cylindrical
 		def self.to_cylindrical(entities,center,raxis,zaxis,scale=1)
 			model = Sketchup.active_model
 
-			model.start_operation('Coordinate conversion', true)
+			model.start_operation('Unwrap Cylinder', true)
 			taxis = zaxis.cross(raxis)
 			original_axes = [model.axes.origin, *model.axes.axes]
-			original_axes = original_axes.map { |e| e.clone  }
 			model.axes.set(center,raxis,taxis,zaxis)
 
 			t2 = model.axes.transformation
@@ -172,7 +169,7 @@ module M93A
 						else
 							# on cutting plane
 
-							vpos_alter = Geom::Point3d.new [pos.x, -100, pos.z]
+							vpos_alter = Geom::Point3d.new [pos.x, -0.001, pos.z]
 							vpos_alter.transform! t2
 
 							v.faces.each { |f|
@@ -189,7 +186,7 @@ module M93A
 									line = entities.add_line(
 										v2.position, vpos_alter )
 
-									v_alter = line.other_vertex v2
+									v_alter = line.other_vertex v2 if line
 								end
 							}
 
@@ -248,8 +245,89 @@ module M93A
 			[vertices, vectors]
 		end
 
-		def self.activate_cylindrical_tool
-			Sketchup.active_model.select_tool(Cylindrical_Tool.new)
+
+
+		# convert cylindrical coords to Cartesian
+		def self.from_cylindrical(entities,center,taxis,zaxis,scale=1)
+			model = Sketchup.active_model
+
+			model.start_operation('Wrap Cylinder', true)
+			raxis = zaxis.cross(taxis)
+			original_axes = [model.axes.origin, *model.axes.axes]
+			model.axes.set(center,raxis,taxis,zaxis)
+
+			t2 = model.axes.transformation
+			t1 = t2.inverse
+
+			vertices = []
+			vectors  = []
+
+			curves = []
+
+
+			proc {
+				# Extract instances of Vertex from the
+				# entities. Curves are exploded because
+				# there's a bug with regular polygons and
+				# arcs, which results in a distorted model.
+				# see: https://forums.sketchup.com/t/38771
+
+				entities.each{ |e|
+					if e.is_a? Sketchup::Edge
+						if e.curve
+							curves.push e.curve.vertices
+							vertices.push *e.explode_curve.vertices
+						else
+						  vertices.push *e.vertices
+						end
+					elsif e.is_a? Sketchup::ConstructionPoint
+						vertices.push e
+					end
+				}
+
+				vertices.uniq!
+
+			}.call
+
+
+
+			proc {
+				# This part performs the transformation.
+				# No singularities in here, horaaay! :)
+
+
+				vertices.each { |v|
+					pos = v.position.clone
+					pos.transform! t1
+
+					x = pos.x * Math.cos( pos.y / scale )
+					y = pos.x * Math.sin( pos.y / scale )
+					z = pos.z
+
+					pos.set! x,y,z
+
+					pos.transform! t2
+
+					# make list of transformations so
+					# that they can be interpolated
+					vectors.push v.position.vector_to(pos)
+
+				}
+
+				entities.transform_by_vectors(vertices, vectors)
+
+			}.call
+
+			# reweld the curves
+			curves.each{ |c|
+				entities.add_curve(c)
+			}
+
+			# reset axes and commit
+			model.axes.set *original_axes
+			model.commit_operation
+
+			[vertices, vectors]
 		end
 
 	end #module
