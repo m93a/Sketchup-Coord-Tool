@@ -1,9 +1,9 @@
 # Sketchup: Coordinate Tools
-This extension is capable of *unwrapping* cylindrical surfaces into flat faces and *vice versa.
+This extension is capable of *unwrapping* cylindrical surfaces into flat faces and *vice versa*.
 This is achieved by converting the Cartesian coordinates of each vertex into cylindrical coordinates
 and mapping those back to the XYZ axes. The mathematics behind it is very simple yet stunningly efficient.
 With the extension you can write 3D text on the surface of a cylinder, or resize a curved surface so that
-it's radius remains the same, and much more. It can save you hours of work you'd spend doing this by hand.
+its radius remains the same, and much more. It can save you hours of work you'd spend doing this by hand.
 
 This extension is currently in beta. In the future I plan to implement spherical and ellipsoidal coordinates
 and then add some fancy tools like spherical push&pull (with automatic center recognition), cylindrical resize
