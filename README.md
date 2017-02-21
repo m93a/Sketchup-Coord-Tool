@@ -11,6 +11,16 @@ tool and so on.
 
 I'm open to your suggestions and complaints, feel free to file an issue!
 
+<br/>
+
+## How to install
+
+1. Download the `.rbz` file from the [Latest release](https://github.com/m93a/Sketchup-Coord-Tool/releases/latest) page.
+2. Launch Sketchup and select `Window > Extension Manager`
+3. Click on `Install Extension` and select the downloaded file
+
+<br/>
+
 ## How to use
 
 ### Unwrap Cylinder tool
